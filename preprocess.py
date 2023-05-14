@@ -11,7 +11,8 @@ OBS_LOW = "dataset/data/low_concurrency/observation_low_concurrency.sql"
 SAVE_OBS_LOW = "dataset-processed/observation_low_concurrency.sql"
 SEM_OBS_LOW = "dataset/data/low_concurrency/semantic_observation_low_concurrency.sql"
 SAVE_SEM_OBS_LOW = "dataset-processed/semantic_observation_low_concurrency.sql"
-METADATA_LOW = "dataset/data/low_concurrency/metadata.sql"
+META_LOW = "dataset/data/low_concurrency/metadata.sql"
+SAVE_META_LOW = "dataset-processed/metadata_low_concurrency.sql"
 
 
 DEFAULT_SCALE = 1440  # Compress 20 days -> 20 minutes
@@ -27,6 +28,17 @@ def scale_ts_to_float(ts: str, scale=DEFAULT_SCALE, ts_base=TIMESTAMP_BASE) -> f
     ts_float = (ts_int - ts_base) / scale
 
     return ts_float
+
+def process_metadata(read_file, save_file):
+    processed = []
+    with open(read_file,"r") as f:
+        with open(save_file, "w") as wf:
+            for line in f:
+                if line.startswith("--"):
+                    continue
+                else:
+                    wf.write(line)
+            wf.close()
 
 
 def process_sql(filename: str):
@@ -95,20 +107,23 @@ def save_queries(queries: list[tuple[float, str]], save_file: str):
 
 
 def main():
-    # Create dataset-processed directory if not existing
-    Path("./dataset-processed").mkdir(parents=True, exist_ok=True)
+    # # Create dataset-processed directory if not existing
+    # Path("./dataset-processed").mkdir(parents=True, exist_ok=True)
 
-    # Process low concurrency queries
-    queries = process_queries(filename=QUERIES_LOW)
-    save_queries(queries=queries, save_file=SAVE_QUERIES_LOW)
+    # # Process low concurrency queries
+    # queries = process_queries(filename=QUERIES_LOW)
+    # save_queries(queries=queries, save_file=SAVE_QUERIES_LOW)
 
-    # Process low concurrency obs
-    obs = process_sql(filename=OBS_LOW)
-    save_queries(queries=obs, save_file=SAVE_OBS_LOW)
+    # # Process low concurrency obs
+    # obs = process_sql(filename=OBS_LOW)
+    # save_queries(queries=obs, save_file=SAVE_OBS_LOW)
 
-    # Process low concurrency sem-obs
-    sem_obs = process_sql(filename=SEM_OBS_LOW)
-    save_queries(queries=sem_obs, save_file=SAVE_SEM_OBS_LOW)
+    # # Process low concurrency sem-obs
+    # sem_obs = process_sql(filename=SEM_OBS_LOW)
+    # save_queries(queries=sem_obs, save_file=SAVE_SEM_OBS_LOW)
+
+    # remove comments in metadata.sql
+    process_metadata(META_LOW, SAVE_META_LOW)
 
 
 if __name__ == "__main__":
