@@ -1,14 +1,18 @@
 # Preprocess the dataset and sort in time order
 from datetime import datetime
+from pathlib import Path
 import heapq
 
-# QUERIES = "dataset-example/queries-example.txt"
-QUERIES = "dataset/queries/low_concurrency/queries.txt"
-SAVE_QUERIES = "dataset-processed/queries.txt"
+QUERIES_LOW = "dataset/queries/low_concurrency/queries.txt"
+SAVE_QUERIES_LOW = "dataset-processed/queries.txt"
 
-# OBSERVATION = "dataset-example/observation_example.sql"
-OBSERVATION = "dataset/data/low_concurrency/observation_low_concurrency.sql"
-SAVE_OBSERVATIONS = "dataset-processed/observation_low_concurrency.sql"
+# Low Concurrency dataset
+OBS_LOW = "dataset/data/low_concurrency/observation_low_concurrency.sql"
+SAVE_OBS_LOW = "dataset-processed/observation_low_concurrency.sql"
+SEM_OBS_LOW = "dataset/data/low_concurrency/semantic_observation_low_concurrency.sql"
+SAVE_SEM_OBS_LOW = "dataset-processed/semantic_observation_low_concurrency.sql"
+METADATA_LOW = "dataset/data/low_concurrency/metadata.sql"
+
 
 DEFAULT_SCALE = 1440  # Compress 20 days -> 20 minutes
 TIMESTAMP_BASE = 1510099200  # Epoch time of 2017-11-08T00:00:00Z
@@ -25,7 +29,7 @@ def scale_ts_to_float(ts: str, scale=DEFAULT_SCALE, ts_base=TIMESTAMP_BASE) -> f
     return ts_float
 
 
-def process_sql(filename=OBSERVATION):
+def process_sql(filename: str):
     queries_list = []
     set_queries = []  # Store the SET queries and later append to start of queries_list
     with open(filename, "r") as f:
@@ -59,7 +63,7 @@ def process_sql(filename=OBSERVATION):
     return queries_list
 
 
-def process_queries(filename=QUERIES):
+def process_queries(filename):
     queries_list = []
     with open(filename, "r") as f:
         current_query = ""
@@ -81,27 +85,30 @@ def process_queries(filename=QUERIES):
     return queries_list
 
 
-def save_queries(queries: list[tuple[float, str]], save_file: str = SAVE_QUERIES):
+def save_queries(queries: list[tuple[float, str]], save_file: str):
     with open(save_file, "w") as f:
-        for q in queries:
+        while queries:
+            q = heapq.heappop(queries)
             f.write(q[1])
             # f.write("\n")
         f.close()
 
 
 def main():
-    queries = process_queries()
-    save_queries(queries)
-    # while queries:
-    #     q = heapq.heappop(queries)
-    # print(q)
+    # Create dataset-processed directory if not existing
+    Path("./dataset-processed").mkdir(parents=True, exist_ok=True)
 
-    sqls = process_sql()
-    # while sqls:
-    #     q = heapq.heappop(sqls)
-    # print(q)
+    # Process low concurrency queries
+    queries = process_queries(filename=QUERIES_LOW)
+    save_queries(queries=queries, save_file=SAVE_QUERIES_LOW)
 
-    save_queries(sqls, SAVE_OBSERVATIONS)
+    # Process low concurrency obs
+    obs = process_sql(filename=OBS_LOW)
+    save_queries(queries=obs, save_file=SAVE_OBS_LOW)
+
+    # Process low concurrency sem-obs
+    sem_obs = process_sql(filename=SEM_OBS_LOW)
+    save_queries(queries=sem_obs, save_file=SAVE_SEM_OBS_LOW)
 
 
 if __name__ == "__main__":
