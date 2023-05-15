@@ -4,6 +4,7 @@ import time
 DROP = "dataset/schema/drop.sql"
 CREAT = "dataset/schema/create.sql"
 METADATA_LOW = "dataset-processed/metadata_low_concurrency.sql"
+QUERIES_LOW = "dataset-processed/queries_low_concurrency.sql"
 
 TRANSACTION_SIZE = 2048
 
@@ -45,8 +46,10 @@ def main():
     print("Create all tables successfully.")
     # Insert metadata
     execute_sql(METADATA_LOW, CONNECTION)
-    
-    print(f"runtime: {time.time()-start}")
+    print(f"Metadata runtime: {time.time()-start}")
+
+    execute_sql(QUERIES_LOW, CONNECTION)
+    print(f"Queries runtime: {time.time()-start}")
 
 
 if __name__ == "__main__":
