@@ -5,18 +5,22 @@ DROP = "dataset/schema/drop.sql"
 CREAT = "dataset/schema/create.sql"
 METADATA_LOW = "dataset-processed/metadata_low_concurrency.sql"
 
-CONNECTION = "host=173.255.210.115 port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
+TRANSACTION_SIZE = 2048
+
+CONNECTION = "host=localhost port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
+
 
 def execute_sql(filename: str, connection_string: str):
-    cnt = 1024
+    cnt = TRANSACTION_SIZE
+
     # Connect to an existing database
     with psycopg.connect(connection_string) as conn:
         # Open a cursor to perform database operations
         with conn.cursor() as cur:
-            fd = open(filename, 'r')
+            fd = open(filename, "r")
             sqlFile = fd.read()
             fd.close()
-            sqlCommands = sqlFile.split(';')
+            sqlCommands = sqlFile.split(";")
             for command in sqlCommands:
                 try:
                     cur.execute(command)
@@ -27,7 +31,8 @@ def execute_sql(filename: str, connection_string: str):
                 if cnt == 0:
                     conn.commit()
                     print("commit succeessfully")
-                    cnt = 1024
+                    cnt = TRANSACTION_SIZE
+
 
 def main():
     start = time.time()
@@ -40,6 +45,7 @@ def main():
     # Insert metadata
     execute_sql(METADATA_LOW, CONNECTION)
     print(f"runtime: {time.time()-start}")
-    
-if __name__== "__main__":
+
+
+if __name__ == "__main__":
     main()

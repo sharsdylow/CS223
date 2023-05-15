@@ -107,20 +107,20 @@ def save_queries(queries: list[tuple[float, str]], save_file: str):
 
 
 def main():
-    # # Create dataset-processed directory if not existing
-    # Path("./dataset-processed").mkdir(parents=True, exist_ok=True)
+    # Create dataset-processed directory if not existing
+    Path("./dataset-processed").mkdir(parents=True, exist_ok=True)
 
-    # # Process low concurrency queries
-    # queries = process_queries(filename=QUERIES_LOW)
-    # save_queries(queries=queries, save_file=SAVE_QUERIES_LOW)
+    # Process low concurrency queries
+    queries = process_queries(filename=QUERIES_LOW)
+    save_queries(queries=queries, save_file=SAVE_QUERIES_LOW)
 
-    # # Process low concurrency obs
-    # obs = process_sql(filename=OBS_LOW)
-    # save_queries(queries=obs, save_file=SAVE_OBS_LOW)
+    # Process low concurrency obs
+    obs = process_sql(filename=OBS_LOW)
+    save_queries(queries=obs, save_file=SAVE_OBS_LOW)
 
-    # # Process low concurrency sem-obs
-    # sem_obs = process_sql(filename=SEM_OBS_LOW)
-    # save_queries(queries=sem_obs, save_file=SAVE_SEM_OBS_LOW)
+    # Process low concurrency sem-obs
+    sem_obs = process_sql(filename=SEM_OBS_LOW)
+    save_queries(queries=sem_obs, save_file=SAVE_SEM_OBS_LOW)
 
     # remove comments in metadata.sql
     process_metadata(META_LOW, SAVE_META_LOW)
