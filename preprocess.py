@@ -26,8 +26,9 @@ def scale_ts_to_float(ts: str, scale=DEFAULT_SCALE, ts_base=TIMESTAMP_BASE) -> f
 
     return ts_float
 
+
 def process_metadata(read_file, save_file):
-    with open(read_file,"r") as f:
+    with open(read_file, "r") as f:
         with open(save_file, "w") as wf:
             for line in f:
                 if line.startswith("--"):
@@ -86,7 +87,8 @@ def process_queries(filename):
                 ts = line[:-3]
                 ts_float = scale_ts_to_float(ts)
             elif '"' in line:
-                heapq.heappush(queries_list, (ts_float, current_query + "\n"))
+                current_query = current_query.strip(" ") + ";\n"
+                heapq.heappush(queries_list, (ts_float, current_query))
                 current_query = ""
             else:
                 current_query += line.strip("\n").strip("\t").strip(" ") + " "
@@ -114,11 +116,11 @@ def main():
 
     # Process low concurrency sem-obs with transactions before
     sem_obs = process_sql(filename=SEM_OBS_LOW)
-    
-    #merge all queries
+
+    # merge all queries
     all_queries = list(heapq.merge(queries, obs, sem_obs))
 
-    #save all the transactions into one sql file
+    # save all the transactions into one sql file
     save_queries(queries=all_queries, save_file=SAVE_QUERIES_LOW)
 
     # remove comments in metadata.sql
