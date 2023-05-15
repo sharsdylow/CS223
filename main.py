@@ -24,10 +24,11 @@ def execute_sql(filename: str, connection_string: str):
             for command in sqlCommands:
                 try:
                     cur.execute(command)
-                    cnt -= 1
                 except:
                     print("Command skipped")
                     continue
+                finally:
+                    cnt -= 1
                 if cnt == 0:
                     conn.commit()
                     print("commit succeessfully")
@@ -44,6 +45,7 @@ def main():
     print("Create all tables successfully.")
     # Insert metadata
     execute_sql(METADATA_LOW, CONNECTION)
+    
     print(f"runtime: {time.time()-start}")
 
 

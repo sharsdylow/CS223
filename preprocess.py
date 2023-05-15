@@ -3,16 +3,13 @@ from datetime import datetime
 from pathlib import Path
 import heapq
 
-QUERIES_LOW = "dataset/queries/low_concurrency/queries.txt"
-SAVE_QUERIES_LOW = "dataset-processed/queries.txt"
-
 # Low Concurrency dataset
+QUERIES_LOW = "dataset/queries/low_concurrency/queries.txt"
 OBS_LOW = "dataset/data/low_concurrency/observation_low_concurrency.sql"
-SAVE_OBS_LOW = "dataset-processed/observation_low_concurrency.sql"
 SEM_OBS_LOW = "dataset/data/low_concurrency/semantic_observation_low_concurrency.sql"
-SAVE_SEM_OBS_LOW = "dataset-processed/semantic_observation_low_concurrency.sql"
 META_LOW = "dataset/data/low_concurrency/metadata.sql"
 SAVE_META_LOW = "dataset-processed/metadata_low_concurrency.sql"
+SAVE_QUERIES_LOW = "dataset-processed/queries_low_concurrency.sql"
 
 
 DEFAULT_SCALE = 1440  # Compress 20 days -> 20 minutes
@@ -30,7 +27,6 @@ def scale_ts_to_float(ts: str, scale=DEFAULT_SCALE, ts_base=TIMESTAMP_BASE) -> f
     return ts_float
 
 def process_metadata(read_file, save_file):
-    processed = []
     with open(read_file,"r") as f:
         with open(save_file, "w") as wf:
             for line in f:
@@ -112,15 +108,18 @@ def main():
 
     # Process low concurrency queries
     queries = process_queries(filename=QUERIES_LOW)
-    save_queries(queries=queries, save_file=SAVE_QUERIES_LOW)
 
     # Process low concurrency obs
     obs = process_sql(filename=OBS_LOW)
-    save_queries(queries=obs, save_file=SAVE_OBS_LOW)
 
-    # Process low concurrency sem-obs
+    # Process low concurrency sem-obs with transactions before
     sem_obs = process_sql(filename=SEM_OBS_LOW)
-    save_queries(queries=sem_obs, save_file=SAVE_SEM_OBS_LOW)
+    
+    #merge all queries
+    all_queries = list(heapq.merge(queries, obs, sem_obs))
+
+    #save all the transactions into one sql file
+    save_queries(queries=all_queries, save_file=SAVE_QUERIES_LOW)
 
     # remove comments in metadata.sql
     process_metadata(META_LOW, SAVE_META_LOW)
