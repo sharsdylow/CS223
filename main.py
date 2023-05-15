@@ -1,7 +1,7 @@
 import psycopg
 import time
 import subprocess
-from math import ceil
+from math import floor
 
 DROP = "dataset/schema/drop.sql"
 CREAT = "dataset/schema/create.sql"
@@ -13,23 +13,9 @@ TRANSACTION_SIZE = 2048
 CONNECTION = "host=localhost port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
 
 
-def file_lines(filename):
-    # https://stackoverflow.com/a/845069
-    p = subprocess.Popen(
-        ["wc", "-l", filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    result, err = p.communicate()
-    if p.returncode != 0:
-        raise IOError(err)
-    return int(result.strip().split()[0])
-
-
 def execute_sql(filename: str, connection_string: str):
     cnt = TRANSACTION_SIZE
     committed = 0
-    total_lines = file_lines(filename)
-    total_transactions = ceil(total_lines / TRANSACTION_SIZE)
-
     # Connect to an existing database
     with psycopg.connect(connection_string) as conn:
         # Open a cursor to perform database operations
@@ -38,6 +24,8 @@ def execute_sql(filename: str, connection_string: str):
             sqlFile = fd.read()
             fd.close()
             sqlCommands = sqlFile.split(";")
+            total_transactions = floor(len(sqlCommands) / TRANSACTION_SIZE)
+
             for command in sqlCommands:
                 try:
                     cur.execute(command)
