@@ -5,7 +5,12 @@ services:
   db:
     image: postgres
     restart: always
-    ports: 
+    ports:
       - "55432:5432"
+    volumes:
+      - data:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: example
+
+volumes: 
+  data:
