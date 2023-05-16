@@ -51,7 +51,7 @@ def process_sql(filename: str):
         # Perform an initial scan for the start of INSERT lines
         for idx, line in enumerate(f):
             if line.startswith("SET"):
-                set_queries.append((0, line))
+                set_queries.append((-1.0, line))
             elif line.startswith("INSERT"):
                 start_of_inserts = idx  # Record start of INSERTs
                 break
@@ -62,7 +62,7 @@ def process_sql(filename: str):
 
         for line in f:
             try:
-                ts_iso = line.split("'")[-4]
+                ts_iso = line.split("'")[-4] + "Z"
             except IndexError:
                 continue
             ts_float = scale_ts_to_float(ts_iso)
