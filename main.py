@@ -17,15 +17,15 @@ def execute_sql(filename: str, connection_string: str):
     cnt = TRANSACTION_SIZE
     committed = 0
     # Connect to an existing database
+    fd = open(filename, "r")
+    sqlFile = fd.read()
+    fd.close()
+    sqlCommands = sqlFile.split(";")
+    total_transactions = floor(len(sqlCommands) / TRANSACTION_SIZE)
+
     with psycopg.connect(connection_string) as conn:
         # Open a cursor to perform database operations
         with conn.cursor() as cur:
-            fd = open(filename, "r")
-            sqlFile = fd.read()
-            fd.close()
-            sqlCommands = sqlFile.split(";")
-            total_transactions = floor(len(sqlCommands) / TRANSACTION_SIZE)
-
             for command in sqlCommands:
                 try:
                     cur.execute(command)
