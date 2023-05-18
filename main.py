@@ -8,69 +8,24 @@ DROP = "dataset/schema/drop.sql"
 CREAT = "dataset/schema/create.sql"
 METADATA_LOW = "dataset-processed/metadata_low_concurrency.sql"
 QUERIES_LOW = "dataset-processed/queries_low_concurrency.sql"
+EXAMPLE = "dataset-processed/example.sql"
 
-TRANSACTION_SIZE = 16
+TRANSACTION_SIZE = 100
 THREADS_NUM = 4  # Multi Processing Level
 
 CONNECTION_STRING = "host=localhost port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
 
 
-def execute_transaction(transaction):
-    with psycopg.connect(CONNECTION_STRING) as conn:
-        # Open a cursor to perform database operations
-        with conn.cursor() as cur:
-            print(conn.info.status)
-            for query in transaction:
-                # print(f"query={query[:64]}...")
-                cur.execute(query)
-        # conn.commit()
-
-
-def execute_sql(filename: str, connection_string: str):
+def execute_sql(filename: str):
     # Connect to an existing database
-    fd = open(filename, "r")
-    sqlFile = fd.read()
-    fd.close()
-    sqlCommands = sqlFile.split(";")
+    with open(filename, "r") as fd:
+        sqlCommands = fd.read().split(";")
 
-    total_queries = len(sqlCommands)
-    transactions = [
-        (
-            sqlCommands[i : i + TRANSACTION_SIZE]
-            if i < floor(total_queries / TRANSACTION_SIZE) * TRANSACTION_SIZE
-            else sqlCommands[i : i + total_queries % TRANSACTION_SIZE]
-        )
-        for i in range(0, total_queries, TRANSACTION_SIZE)
-    ]
-    total_transactions = len(transactions)
-
-    # db_connections = [
-    #     psycopg.connect(connection_string, autocommit=False) for _ in range(THREADS)
-    # ]
-
-    for batch in range(floor(total_transactions / THREADS_NUM)):
-        processes = []
-        for th in range(THREADS_NUM):
-            curr_transaction = transactions[batch + th]
-            processes.append(
-                Process(
-                    target=execute_transaction,
-                    args=(curr_transaction,),
-                )
-            )
-
-        for p in processes:
-            p.start()
-
-    # Last batch
-    remaining = transactions[
-        total_transactions - floor(total_transactions / THREADS_NUM) - 1 :
-    ]
-    for idx, t in enumerate(remaining):
-        Process(
-            target=execute_transaction,
-            args=(t,),
-        ).start()
+    with psycopg.connect(CONNECTION_STRING) as conn:
+        with conn.cursor() as cur:
+            for command in sqlCommands:
+                cur.execute(command)
+            conn.commit()
 
 def execute_queries(filename: str):
     processes = []
@@ -82,14 +37,13 @@ def execute_queries(filename: str):
 
     for process in processes:
         process.join()
-    pass
 
 def worker(thread_id, filename):
     conn = psycopg.connect(CONNECTION_STRING)
     print(f"Thread {thread_id} connected to the database")
 
     with open(filename) as sql_file:
-        queries = sql_file.read().split(';')
+        queries = sql_file.read().split(";")
 
     start = thread_id * TRANSACTION_SIZE
     end = start + TRANSACTION_SIZE
@@ -115,25 +69,25 @@ def worker(thread_id, filename):
     conn.close()
     print(f"Thread {thread_id} disconnected from the database")
 
-
 def main():
     start = time.time()
 
-    processes = []
-    execute_sql(DROP, CONNECTION_STRING)
-    print("Delete all tables successfully.")
     # Init database
+    execute_sql(DROP)
+    print("Delete all tables successfully.")
     # Create table
-    execute_sql(CREAT, CONNECTION_STRING)
+    execute_sql(CREAT)
     print("Create all tables successfully.")
     # Insert metadata
-    execute_queries(METADATA_LOW, CONNECTION_STRING)
-    # print(f"Metadata runtime: {time.time()-start}")
+    execute_sql(METADATA_LOW)
+    print("Insert all metadata successfully.")
+    meta_t = time.time()
+    print(f"Metadata runtime: {meta_t-start}")
 
     # execute queries
-    # execute_queries(QUERIES_LOW)
+    execute_queries(QUERIES_LOW)
     # execute_sql(QUERIES_LOW, CONNECTION)
-    # print(f"Queries runtime: {time.time()-start}")
+    print(f"Queries runtime: {time.time()-meta_t}")
 
 
 if __name__ == "__main__":
