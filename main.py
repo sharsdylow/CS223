@@ -8,9 +8,9 @@ DROP = "dataset/schema/drop.sql"
 CREAT = "dataset/schema/create.sql"
 METADATA_LOW = "dataset-processed/metadata_low_concurrency.sql"
 QUERIES_LOW = "dataset-processed/queries_low_concurrency.sql"
-EXAMPLE = "dataset-processed/example.sql"
+EXAMPLE = "dataset-example/example.sql"
 
-TRANSACTION_SIZE = 100
+TRANSACTION_SIZE = 2048
 THREADS_NUM = 4  # Multi Processing Level
 
 CONNECTION_STRING = "host=localhost port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
@@ -27,7 +27,42 @@ def execute_sql(filename: str):
                 cur.execute(command)
             conn.commit()
 
+
 def execute_queries(filename: str):
+    def worker(thread_id, filename):
+        conn = psycopg.connect(CONNECTION_STRING)
+        print(f"Thread {thread_id} connected to the database")
+
+        with open(filename) as sql_file:
+            queries = sql_file.read().split(";")
+
+        start = thread_id * TRANSACTION_SIZE
+        end = start + TRANSACTION_SIZE
+        count = 0
+        total = ceil(len(queries) / (TRANSACTION_SIZE * THREADS_NUM))
+
+        while start < len(queries):
+            transaction_queries = queries[start:end]
+
+            try:
+                with conn.cursor() as cursor:
+                    for query in transaction_queries:
+                        if query.strip():
+                            cursor.execute(query)
+                    conn.commit()
+            except psycopg.Error as e:
+                conn.rollback()
+                print(f"Error executing transaction in thread {thread_id}: {e}")
+            else:
+                print(f"Thread {thread_id} executed a transaction ({count}/{total})")
+
+            start += THREADS_NUM * TRANSACTION_SIZE
+            end += THREADS_NUM * TRANSACTION_SIZE
+            count += 1
+
+        conn.close()
+        print(f"Thread {thread_id} disconnected from the database")
+
     processes = []
 
     for i in range(THREADS_NUM):
@@ -38,36 +73,6 @@ def execute_queries(filename: str):
     for process in processes:
         process.join()
 
-def worker(thread_id, filename):
-    conn = psycopg.connect(CONNECTION_STRING)
-    print(f"Thread {thread_id} connected to the database")
-
-    with open(filename) as sql_file:
-        queries = sql_file.read().split(";")
-
-    start = thread_id * TRANSACTION_SIZE
-    end = start + TRANSACTION_SIZE
-
-    while start < len(queries):
-        transaction_queries = queries[start:end]
-
-        try:
-            with conn.cursor() as cursor:
-                for query in transaction_queries:
-                    if query.strip():
-                        cursor.execute(query)
-                conn.commit()
-        except psycopg.Error as e:
-            conn.rollback()
-            print(f"Error executing transaction in thread {thread_id}: {e}")
-        else:
-            print(f"Thread {thread_id} executed a transaction")
-
-        start += THREADS_NUM * TRANSACTION_SIZE
-        end += THREADS_NUM * TRANSACTION_SIZE
-
-    conn.close()
-    print(f"Thread {thread_id} disconnected from the database")
 
 def main():
     start = time.time()
@@ -86,6 +91,7 @@ def main():
 
     # execute queries
     execute_queries(QUERIES_LOW)
+    # execute_queries(EXAMPLE)
     # execute_sql(QUERIES_LOW, CONNECTION)
     print(f"Queries runtime: {time.time()-meta_t}")
 
