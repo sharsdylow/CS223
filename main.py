@@ -1,6 +1,6 @@
 import psycopg
 import time
-from multiprocessing import Pool, Process, Lock
+from multiprocessing import Manager, Process
 from math import ceil, floor
 from psycopg import Connection
 
@@ -27,25 +27,32 @@ def execute_sql(filename: str):
                 cur.execute(command)
             conn.commit()
 
-def worker(thread_id, thread_queries):
-    count, executed = 0, 0
-    total = ceil(len(thread_queries)/TRANSACTION_SIZE)
+def worker(thread_id, queries):
     conn = psycopg.connect(CONNECTION_STRING)
     print(f"Thread {thread_id} connected to the database")
-    try:
-        with conn.cursor() as cursor:
-            for query in thread_queries:
-                if query.strip():
-                    cursor.execute(query)
-                    executed += 1
-                if executed == TRANSACTION_SIZE:
-                    conn.commit()
-                    executed = 0
-                    count += 1
-                    print(f"Thread {thread_id} executed a transaction ({count}/{total})")
-    except psycopg.Error as e:
-        conn.rollback()
-        print(f"Error executing transaction in thread {thread_id}: {e}")         
+
+    count = 0
+    total = ceil(len(queries)/(TRANSACTION_SIZE * THREADS_NUM))
+    start = thread_id * TRANSACTION_SIZE
+    end = start + TRANSACTION_SIZE
+    while start < len(queries):
+        transaction_queries = queries[start:end]    # get queries for each thread
+        try:
+            with conn.cursor() as cursor:
+                for query in transaction_queries:
+                    if query.strip():
+                        cursor.execute(query)
+                conn.commit()
+                count += 1 
+        except psycopg.Error as e:
+            conn.rollback()
+            print(f"Error executing transaction in thread {thread_id}: {e}")  
+        else:
+            print(f"Thread {thread_id} executed a transaction ({count}/{total})")  
+
+        start += THREADS_NUM * TRANSACTION_SIZE
+        end += THREADS_NUM * TRANSACTION_SIZE   
+
     conn.close()
     print(f"Thread {thread_id} disconnected from the database")
 
@@ -53,18 +60,11 @@ def execute_queries(filename: str):
     processes = []
 
     with open(filename) as sql_file:
-        queries = sql_file.read().split(";")
+        queries = Manager().list()
+        queries += sql_file.read().split(";")
         # init every thread
         for thread_id in range(THREADS_NUM):
-            thread_queries = []
-            start = thread_id * TRANSACTION_SIZE
-            end = start + TRANSACTION_SIZE
-            while start < len(queries):
-                thread_queries += queries[start:end]    # get queries for each thread
-                start += THREADS_NUM * TRANSACTION_SIZE
-                end += THREADS_NUM * TRANSACTION_SIZE
-
-            p = Process(target=worker, args=(thread_id, thread_queries))
+            p = Process(target=worker, args=(thread_id, queries))
             processes.append(p)
             p.start()
 
