@@ -11,7 +11,7 @@ QUERIES_LOW = "dataset-processed/queries_low_concurrency.sql"
 EXAMPLE = "dataset-example/example.sql"
 
 TRANSACTION_SIZE = 64
-THREADS_NUM = 100 # Multi Processing Level
+THREADS_NUM = 4 # Multi Processing Level
 
 CONNECTION_STRING = "host=localhost port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
 
@@ -30,42 +30,31 @@ def worker(thread_id, queries, avg_response_time):
     conn = psycopg.connect(CONNECTION_STRING)
     print(f"Thread {thread_id} connected to the database")
 
-    count = 0
-    total = ceil(len(queries)/(TRANSACTION_SIZE * THREADS_NUM))
-    start = thread_id * TRANSACTION_SIZE
-    end = start + TRANSACTION_SIZE
-    # executed, avg = 0, 0 # init number of executed queries and average response time.
-
+    transaction_count = 0
+    query_count = 0
+    total = ceil(len(queries)/TRANSACTION_SIZE)
+    
     total_response_time = 0.0
+    
+    try:
+        with conn.cursor() as cursor:
+            for query in queries:
+                if query.strip():
+                    start_t = time.time()
+                    cursor.execute(query)
+                    end_t = time.time()
+                    query_count += 1
+                    total_response_time += (end_t - start_t)
 
-    while start < len(queries):
-        transaction_queries = queries[start:end]    # get queries for each thread
-        try:
-            with conn.cursor() as cursor:
-                for query in transaction_queries:
-                    if query.strip():
-                        # last_avg = avg
-                        # total_t = last_avg * executed
+                if query_count == TRANSACTION_SIZE:                        
+                    conn.commit()
+                    transaction_count += 1 
+                    query_count = 0
+                    print(f"Thread {thread_id} executed a transaction ({transaction_count}/{total})")
 
-                        start_t = time.time()
-                        cursor.execute(query)
-                        end_t = time.time()
-
-                        total_response_time += (end_t - start_t)
-                        
-                        # total_t += (end_t - start_t)
-                        # executed += 1
-                        # avg = total_t / executed                       
-                conn.commit()
-                count += 1 
-        except psycopg.Error as e:
-            conn.rollback()
-            print(f"Error executing transaction in thread {thread_id}: {e}")  
-        else:
-            print(f"Thread {thread_id} executed a transaction ({count}/{total})")  
-
-        start += THREADS_NUM * TRANSACTION_SIZE
-        end += THREADS_NUM * TRANSACTION_SIZE   
+    except psycopg.Error as e:
+        conn.rollback()
+        print(f"Error executing transaction in thread {thread_id}: {e}")    
 
     conn.close()
     # avg_response_time[thread_id] = avg
@@ -78,11 +67,21 @@ def execute_queries(filename: str):
     avg_response_time = Manager().list([0 for _ in range(THREADS_NUM)])
 
     with open(filename) as sql_file:
-        queries = Manager().list()
-        queries += sql_file.read().split(";")
+        queries = sql_file.read().split(";")
+        # query_slices = [Manager().list() for _ in range(THREADS_NUM)]
+        query_slices = [[] for _ in range(THREADS_NUM)]
         # init every thread
         for thread_id in range(THREADS_NUM):
-            p = Process(target=worker, args=(thread_id, queries, avg_response_time))
+            # queries_slice = Manager().list()
+            start = thread_id * TRANSACTION_SIZE
+            end = start + TRANSACTION_SIZE
+            while start < len(queries):
+                # queries_slice += queries[start:end]    # get queries for each thread
+                query_slices[thread_id] += queries[start:end]    # get queries for each thread
+                start += THREADS_NUM * TRANSACTION_SIZE
+                end += THREADS_NUM * TRANSACTION_SIZE   
+            # p = Process(target=worker, args=(thread_id, queries_slice, avg_response_time))
+            p = Process(target=worker, args=(thread_id, query_slices[thread_id], avg_response_time))
             processes.append(p)
             p.start()
 
@@ -100,8 +99,8 @@ def execute_queries(filename: str):
     print(f"{used_workers} workers used")
     avg_queries_time = sum(avg_response_time) / used_workers
     avg_queries_time_1 = response_time / len(queries)
-    print(f"Average response time for queries: {avg_queries_time:.4f} seconds.")
-    print(f"Average response time for queries: {avg_queries_time_1:.4f} seconds.")
+    print(f"Average response time for queries: {avg_queries_time:.8f} seconds.")
+    print(f"Average response time for queries: {avg_queries_time_1:.8f} seconds.")
 
 
 
