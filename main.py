@@ -13,6 +13,7 @@ EXAMPLE = "dataset-example/example.sql"
 
 TRANSACTION_SIZE = 64
 THREADS_NUM = 4  # Multi Processing Level
+TRUNCATE = 0
 
 CONNECTION_STRING = "host=localhost port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
 
@@ -119,8 +120,6 @@ def execute_sql_concurrent(filename: str, truncate_lines: int = 0):
 
 
 def main():
-    start = time.time()
-
     # Init database
     execute_sql(DROP)
     print("Delete all tables successfully.")
@@ -132,7 +131,9 @@ def main():
     print("Insert all metadata successfully.")
 
     # execute queries
-    (throughput, avg_query_time, workload_time) = execute_sql_concurrent(QUERIES, 1000)
+    (throughput, avg_query_time, workload_time) = execute_sql_concurrent(
+        QUERIES, TRUNCATE
+    )
     print("Report: ")
     print(f"Throughput\tQuery\tWorkload")
     print(f"{throughput}\t{avg_query_time}\t{workload_time}")
@@ -154,6 +155,11 @@ if __name__ == "__main__":
         default=64,
     )
     parser.add_argument(
+        "--truncate",
+        type=int,
+        help="Truncate input query file to N lines",
+    )
+    parser.add_argument(
         "--metadata",
         type=str,
         help="A file containing all database metadata",
@@ -169,6 +175,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     TRANSACTION_SIZE = args.size
     THREADS_NUM = args.workers
+    TRUNCATE = args.truncate
     METADATA = args.metadata
     QUERIES = args.queries
 
