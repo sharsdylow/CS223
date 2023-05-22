@@ -137,7 +137,6 @@ def main():
     print("Report: ")
     print(f"Throughput\tQuery\tWorkload")
     print(f"{throughput}\t{avg_query_time}\t{workload_time}")
-    # execute_queries(EXAMPLE)
 
 
 if __name__ == "__main__":
