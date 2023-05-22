@@ -18,7 +18,7 @@ CONSISTANCY_LEVEL = 4  # READ_UNCOMMITTED = 1 READ_COMMITTED = 2 REPEATABLE_READ
 # fmt: on
 TRUNCATE = 0
 
-CONNECTION_STRING = "host=localhost port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
+CONNECTION_STRING = "host=db port=5432 dbname=postgres user = postgres password=example connect_timeout=10"
 
 
 def execute_sql(filename: str):

@@ -11,6 +11,14 @@ services:
       - data:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: example
+  driver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./dataset-processed:/app/dataset-processed
+      - ./dataset/schema:/app/dataset/schema
+      - ./logs:/app/logs
 
-volumes: 
+volumes:
   data:

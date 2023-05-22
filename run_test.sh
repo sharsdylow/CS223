@@ -46,7 +46,7 @@ for lvl in "${CONSISTENCY_LEVEL[@]}"; do
         for size in "${TRANSACTION_SIZE[@]}"; do
             if [[ VERBOSE -eq 1 ]]; then
                 echo "Running test under setup: CONSISTENCY_LEVEL=$lvl MPL=$mpl TRANSACTION_SIZE=$size"
-                cmd="python main.py --consistency-level $lvl --size $size --workers $mpl --metadata $METADATA_HIGH --queries $QUERY_HIGH"
+                cmd="python main.py --truncate 1000 --consistency-level $lvl --size $size --workers $mpl --metadata $METADATA_HIGH --queries $QUERY_HIGH"
                 echo $cmd
                 echo -e -n "$lvl\t$mpl\t$size\t" >>"$LOG_FILE_HIGH"
                 $cmd | tail -n 1 >>"$LOG_FILE_HIGH"
