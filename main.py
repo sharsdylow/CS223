@@ -13,6 +13,9 @@ EXAMPLE = "dataset-example/example.sql"
 
 TRANSACTION_SIZE = 64
 THREADS_NUM = 4  # Multi Processing Level
+# fmt: off
+CONSISTANCY_LEVEL = 4  # READ_UNCOMMITTED = 1 READ_COMMITTED = 2 REPEATABLE_READ = 3 SERIALIZABLE = 4
+# fmt: on
 TRUNCATE = 0
 
 CONNECTION_STRING = "host=localhost port=55432 dbname=postgres user = postgres password=example connect_timeout=10"
@@ -32,12 +35,14 @@ def execute_sql(filename: str):
 def worker(thread_id, queries, avg_response_time):
     conn = psycopg.connect(CONNECTION_STRING)
     print(f"Thread {thread_id} connected to the database")
-
+    # set consistency level
+    conn.isolation_level = CONSISTANCY_LEVEL
+    # init committed number of transactions and number of executed queries
     transaction_count = 0
     query_count = 0
-    total = ceil(len(queries) / TRANSACTION_SIZE)
-
     total_response_time = 0.0
+    # calculate number of total transactions
+    total = ceil(len(queries) / TRANSACTION_SIZE)
 
     try:
         with conn.cursor() as cursor:
@@ -80,7 +85,6 @@ def execute_sql_concurrent(filename: str, truncate_lines: int = 0):
         query_slices = [[] for _ in range(THREADS_NUM)]
         # init every thread
         for thread_id in range(THREADS_NUM):
-            # queries_slice = Manager().list()
             start = thread_id * TRANSACTION_SIZE
             end = start + TRANSACTION_SIZE
             while start < len(queries):
@@ -170,6 +174,12 @@ if __name__ == "__main__":
         help="A file containing all database queries",
         required=True,
     )
+    parser.add_argument(
+        "--consistency-level",
+        type=int,
+        help="Consistency level (1~4)",
+        default=2,
+    )
 
     args = parser.parse_args()
     TRANSACTION_SIZE = args.size
@@ -177,5 +187,8 @@ if __name__ == "__main__":
     TRUNCATE = args.truncate
     METADATA = args.metadata
     QUERIES = args.queries
+    CONSISTANCY_LEVEL = args.consistency_level
+
+    # print(args)
 
     main()
