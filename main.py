@@ -66,14 +66,16 @@ def worker(thread_id, queries, avg_response_time):
     print(f"Thread {thread_id} disconnected from the database")
 
 
-def execute_sql_concurrent(filename: str):
-    start = time.time()
+def execute_sql_concurrent(filename: str, truncate_lines: int = 0):
+    start_t = time.time()
     processes = []
     avg_response_time = Manager().list([0 for _ in range(THREADS_NUM)])
 
     with open(filename) as sql_file:
         queries = sql_file.read().split(";")
-        # query_slices = [Manager().list() for _ in range(THREADS_NUM)]
+        if truncate_lines:
+            queries = queries[:truncate_lines]
+
         query_slices = [[] for _ in range(THREADS_NUM)]
         # init every thread
         for thread_id in range(THREADS_NUM):
@@ -87,7 +89,10 @@ def execute_sql_concurrent(filename: str):
                 ]  # get queries for each thread
                 start += THREADS_NUM * TRANSACTION_SIZE
                 end += THREADS_NUM * TRANSACTION_SIZE
-            # p = Process(target=worker, args=(thread_id, queries_slice, avg_response_time))
+
+            if len(query_slices[thread_id]) == 0:
+                continue  # Do not initiate worker if its query workload is empty
+
             p = Process(
                 target=worker,
                 args=(thread_id, query_slices[thread_id], avg_response_time),
@@ -98,19 +103,19 @@ def execute_sql_concurrent(filename: str):
     for process in processes:
         process.join()
 
-    response_time = time.time() - start
-    print(f"Response time of the whole workload: {response_time:.4f} seconds.")
+    workload_time = time.time() - start_t
+    print(f"Response time of the whole workload: {workload_time:.4f} seconds.")
 
     transaction_num = ceil(len(queries) / TRANSACTION_SIZE)
-    throughput = transaction_num / response_time
+    throughput = transaction_num / workload_time
     print(f"Throughput: {throughput:.4f} transactions per second.")
 
     used_workers = len([w for w in avg_response_time if w != 0.0])
     print(f"{used_workers} workers used")
-    avg_queries_time = sum(avg_response_time) / used_workers
-    avg_queries_time_1 = response_time / len(queries)
-    print(f"Average response time for queries: {avg_queries_time:.8f} seconds.")
-    print(f"Average response time for queries: {avg_queries_time_1:.8f} seconds.")
+    avg_query_time = sum(avg_response_time) / used_workers
+    print(f"Average response time for queries: {avg_query_time:.8f} seconds.")
+
+    return (throughput, avg_query_time, workload_time)
 
 
 def main():
