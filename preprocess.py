@@ -11,6 +11,14 @@ META_LOW = "dataset/data/low_concurrency/metadata.sql"
 SAVE_META_LOW = "dataset-processed/metadata_low_concurrency.sql"
 SAVE_QUERIES_LOW = "dataset-processed/queries_low_concurrency.sql"
 
+# High concurrency dataset
+QUERIES_HIGH = "dataset/queries/high_concurrency/queries.txt"
+OBS_HIGH = "dataset/data/high_concurrency/observation_high_concurrency.sql"
+SEM_OBS_HIGH = "dataset/data/high_concurrency/semantic_observation_high_concurrency.sql"
+META_HIGH = "dataset/data/high_concurrency/metadata.sql"
+SAVE_META_HIGH = "dataset-processed/metadata_high_concurrency.sql"
+SAVE_QUERIES_HIGH = "dataset-processed/queries_high_concurrency.sql"
+
 
 DEFAULT_SCALE = 1440  # Compress 20 days -> 20 minutes
 TIMESTAMP_BASE = 1510099200  # Epoch time of 2017-11-08T00:00:00Z
@@ -125,6 +133,25 @@ def main():
 
     # remove comments in metadata.sql
     process_metadata(META_LOW, SAVE_META_LOW)
+
+
+    # Process low concurrency queries
+    queries = process_queries(filename=QUERIES_HIGH)
+
+    # Process low concurrency obs
+    obs = process_sql(filename=OBS_HIGH)
+
+    # Process low concurrency sem-obs with transactions before
+    sem_obs = process_sql(filename=SEM_OBS_HIGH)
+
+    # merge all queries
+    all_queries = list(heapq.merge(queries, obs, sem_obs))
+
+    # save all the transactions into one sql file
+    save_queries(queries=all_queries, save_file=SAVE_QUERIES_HIGH)
+
+    # remove comments in metadata.sql
+    process_metadata(META_HIGH, SAVE_META_HIGH)
 
 
 if __name__ == "__main__":
